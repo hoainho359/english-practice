@@ -22,21 +22,22 @@ import vn.edu.iuh.english_practice.dto.request.IntropectTokenRequest;
 import vn.edu.iuh.english_practice.dto.response.ApiResponse;
 import vn.edu.iuh.english_practice.dto.response.AuthenticationResponse;
 import vn.edu.iuh.english_practice.dto.response.ExchangeTokenResponse;
+import vn.edu.iuh.english_practice.dto.response.OutboundUserInfoResponse;
 import vn.edu.iuh.english_practice.entity.Permission;
 import vn.edu.iuh.english_practice.entity.Role;
 import vn.edu.iuh.english_practice.entity.User;
 import vn.edu.iuh.english_practice.exception.AppException;
 import vn.edu.iuh.english_practice.exception.ErrorCode;
+import vn.edu.iuh.english_practice.repository.RoleRepository;
 import vn.edu.iuh.english_practice.repository.UserRepository;
 import vn.edu.iuh.english_practice.repository.httpClient.OutboundIdentityClient;
+import vn.edu.iuh.english_practice.repository.httpClient.OutboundUserClient;
 
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Date;
-import java.util.Optional;
-import java.util.StringJoiner;
-import java.util.UUID;
+import java.util.*;
+
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequiredArgsConstructor
@@ -49,6 +50,8 @@ public class AuthenticationService {
     UserRepository userRepository;
     PasswordEncoder passwordEncoder;
     OutboundIdentityClient outboundIdentityClient;
+    OutboundUserClient outboundUserClient;
+    RoleRepository roleRepository;
 
 //    @Value("${outbound.identity.redirectUri}")
 //    @NonFinal
@@ -75,6 +78,23 @@ public class AuthenticationService {
           log.info("outbound rq: {}", exchangeTokenRequest.toString());
           ExchangeTokenResponse exchangeTokenResponse = outboundIdentityClient.exchangeToken(exchangeTokenRequest);
           log.info("outbound rq: {}", exchangeTokenResponse.toString());
+          //sau khi user continue gg onboad vao db
+          OutboundUserInfoResponse json = outboundUserClient.getUserInfo("json", exchangeTokenResponse.getAccessToken());
+
+          List<User> byUserName = userRepository.findByUserName(json.getEmail());
+          Optional<Role> user = roleRepository.findByName("user").stream().findFirst();
+          Set<Role> roleUser = new HashSet<>();
+          roleUser.add(user.get());
+          if (CollectionUtils.isEmpty(byUserName)){
+              userRepository.save(User.builder()
+                              .lastName(json.getGivenName())
+                              .firstName(json.getFamilyName())
+                              .userName(json.getEmail())
+                              .roles(roleUser)
+                      .build()
+              );
+          }
+          log.info("user info{}", json);
           return AuthenticationResponse.builder()
                   .isSuccess(true)
                   .token(exchangeTokenResponse.getAccessToken())
