@@ -11,7 +11,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class UserRequest {
-    String id;
+//    String id;
     String userName;
     String passWord;
     String firstName;

@@ -63,33 +63,4 @@ public class UserController {
         userService.deleteUser(id);
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<ApiResponse> authenticated(@RequestBody AuthenticationRequest request){
-        val authentication = userService.authentication(request);
-        return  ResponseEntity.status(HttpStatus.OK).body(
-                ApiResponse.builder()
-                        .success(true)
-                        .code(200)
-                        .message("authenticated")
-                        .result(authentication)
-                        .build()
-                );
-    }
-    @PostMapping("/logout")
-    public ResponseEntity<ApiResponse> authenticated(@RequestBody LogoutRequest request) throws ParseException, JOSEException {
-        invalidatedTokenService.logout(request);
-        return  ResponseEntity.status(HttpStatus.OK).body(
-                ApiResponse.builder()
-                        .success(true)
-                        .code(200)
-                        .message("logout success")
-                        .result(null)
-                        .build()
-        );
-    }
-    @PostMapping("/intropect")
-    public ResponseEntity<Boolean> authenticated(@RequestBody IntropectTokenRequest intropectTokenRequest) throws ParseException, JOSEException {
-        System.out.println("log intropect: "+intropectTokenRequest.getToken());
-        return  ResponseEntity.status(HttpStatus.OK).body(userService.intropectToken(intropectTokenRequest));
-    }
 }
