@@ -47,6 +47,15 @@ public class UserController {
         log.info("Debug getAuthorities " +authentication.getAuthorities());
         return ResponseEntity.status(HttpStatus.OK).body(userService.getUsers());
     }
+    @GetMapping("/my-info")
+    public ApiResponse<UserResponse> getMyInfo() {
+        log.info("my-info");
+        return ApiResponse.<UserResponse>builder()
+                .success(true)
+                .message("get info success")
+                .result(userService.getMyInfo())
+                .build();
+    }
 
     @GetMapping("/{userId}")
     public UserResponse getUser(@PathVariable String userId) {

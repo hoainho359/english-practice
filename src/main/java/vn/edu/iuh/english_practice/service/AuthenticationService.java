@@ -81,23 +81,42 @@ public class AuthenticationService {
           //sau khi user continue gg onboad vao db
           OutboundUserInfoResponse json = outboundUserClient.getUserInfo("json", exchangeTokenResponse.getAccessToken());
 
-          List<User> byUserName = userRepository.findByUserName(json.getEmail());
-          Optional<Role> user = roleRepository.findByName("user").stream().findFirst();
-          Set<Role> roleUser = new HashSet<>();
-          roleUser.add(user.get());
-          if (CollectionUtils.isEmpty(byUserName)){
-              userRepository.save(User.builder()
-                              .lastName(json.getGivenName())
-                              .firstName(json.getFamilyName())
-                              .userName(json.getEmail())
-                              .roles(roleUser)
-                      .build()
-              );
+          Optional<User> byProviderId = userRepository.findByProviderId(json.getId());
+
+          User user;
+
+          if (byProviderId.isEmpty()) {
+
+              Optional<Role> role =
+                      roleRepository.findByName("user")
+                              .stream()
+                              .findFirst();
+
+              Set<Role> roles = new HashSet<>();
+              roles.add(role.orElseThrow());
+
+              user = User.builder()
+                      .lastName(json.getGivenName())
+                      .firstName(json.getFamilyName())
+                      .userName(json.getEmail())
+                      .roles(roles)
+                      .provierId(json.getId())
+                      .build();
+
+              userRepository.save(user);
+
+          } else {
+              user = byProviderId.get();
           }
-          log.info("user info{}", json);
+
+          log.info("user info {}", json);
+
+          //generate token of sys instead of gg
+          String generatedToken = generateToken(user);
+
           return AuthenticationResponse.builder()
                   .isSuccess(true)
-                  .token(exchangeTokenResponse.getAccessToken())
+                  .token(generatedToken)
                   .build();
       }catch (FeignException e){
           log.error("Google HTTP status: {}", e.status());

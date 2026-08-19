@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PostAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.edu.iuh.english_practice.dto.request.UserRequest;
@@ -40,7 +41,23 @@ public class UserService {
                 .build();
         return userRepository.save(user);
     }
-//    @PreAuthorize("hasRole('USER')")
+    public UserResponse getMyInfo() {
+        var context = SecurityContextHolder.getContext();
+        String name = context.getAuthentication().getName();
+
+        User user = userRepository.findByUserName(name).stream().findFirst().get();
+
+        return UserResponse.builder()
+                .userName(user.getUserName())
+                .passWord(user.getPassWord())
+                .lastName(user.getLastName())
+                .firstName(user.getFirstName())
+                .Dob(user.getDob())
+                .roles(user.getRoles().stream().map(r -> r.getName()).collect(Collectors.toSet()))
+                .build();
+    }
+
+    //    @PreAuthorize("hasRole('USER')")
     public List<UserResponse> getUsers(){
         return userRepository.findAll().stream()
                 .map(user -> UserResponse.builder()

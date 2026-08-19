@@ -33,7 +33,7 @@ public class SecurityConfig {
     };
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, CustomJwtDecoder customJwtDecoder) throws Exception {
 
         return http
                 .csrf(csrf -> csrf.disable())
@@ -46,6 +46,12 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt
+                                .decoder(customJwtDecoder)
+                               // .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                        )
+                )
                 .build();
     }
 
