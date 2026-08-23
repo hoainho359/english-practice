@@ -3,8 +3,6 @@ package org.example.supperapp.examservice.entity;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-
-import javax.swing.text.html.Option;
 import java.util.List;
 
 @Getter
@@ -22,4 +20,6 @@ public class Question {
      List<Option> options;
 
      String explanation;
+
+     String imageBase64;
 }
