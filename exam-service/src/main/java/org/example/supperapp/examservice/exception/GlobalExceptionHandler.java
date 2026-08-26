@@ -2,10 +2,12 @@ package org.example.supperapp.examservice.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.example.supperapp.examservice.dto.response.ApiResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.Map;
 
@@ -48,6 +50,18 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse> handleMaxSizeException(MaxUploadSizeExceededException exc) {
+        ErrorCode errorCode = ErrorCode.PAYLOAD_TOO_LARGE;
+        return ResponseEntity
+                .status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(
+                        ApiResponse.builder()
+                                .code(errorCode.getCode())
+                                .message(errorCode.getMessage())
+                                .build()
+                );
+    }
 //    @ExceptionHandler(value = MethodArgumentNotValidException.class)
 //    ResponseEntity<ApiResponse> handlingValidation(MethodArgumentNotValidException exception) {
 //        String enumKey = exception.getFieldError().getDefaultMessage();

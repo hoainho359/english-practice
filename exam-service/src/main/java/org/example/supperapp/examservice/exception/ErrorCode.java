@@ -15,6 +15,9 @@ public enum ErrorCode {
     UNAUTHENTICATED(1006, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
     INVALID_DOB(1008, "Your age must be at least {min}", HttpStatus.BAD_REQUEST),
+
+    //file
+    PAYLOAD_TOO_LARGE(2000, "pauload too large must be < 50 mb", HttpStatus.PAYLOAD_TOO_LARGE)
     ;
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {

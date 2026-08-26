@@ -24,7 +24,11 @@ public class FileController {
             @RequestParam Integer year,
             @RequestParam Integer testNumber) throws IOException {
 
-        fileService.uploadFile(file, year, testNumber);
+        try {
+            fileService.uploadFile(file, year, testNumber);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         return ResponseEntity.ok().build();
     }
