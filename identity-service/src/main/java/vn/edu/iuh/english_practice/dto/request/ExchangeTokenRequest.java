@@ -2,9 +2,7 @@ package vn.edu.iuh.english_practice.dto.request;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import tools.jackson.databind.PropertyNamingStrategies;
-import tools.jackson.databind.PropertyNamingStrategy;
-import tools.jackson.databind.annotation.JsonNaming;
+
 
 @Getter
 @Setter
