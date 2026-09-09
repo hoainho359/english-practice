@@ -1,6 +1,7 @@
 package org.example.supperapp.examservice.exception;
 
-import lombok.extern.slf4j.Slf4j;
+import java.util.Map;
+
 import org.example.supperapp.examservice.dto.response.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,7 +10,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
-import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 
 @ControllerAdvice
 @Slf4j
@@ -53,45 +54,42 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiResponse> handleMaxSizeException(MaxUploadSizeExceededException exc) {
         ErrorCode errorCode = ErrorCode.PAYLOAD_TOO_LARGE;
-        return ResponseEntity
-                .status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(
-                        ApiResponse.builder()
-                                .code(errorCode.getCode())
-                                .message(errorCode.getMessage())
-                                .build()
-                );
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(ApiResponse.builder()
+                        .code(errorCode.getCode())
+                        .message(errorCode.getMessage())
+                        .build());
     }
-//    @ExceptionHandler(value = MethodArgumentNotValidException.class)
-//    ResponseEntity<ApiResponse> handlingValidation(MethodArgumentNotValidException exception) {
-//        String enumKey = exception.getFieldError().getDefaultMessage();
-//
-//        ErrorCode errorCode = ErrorCode.INVALID_KEY;
-//        Map<String, Object> attributes = null;
-//        try {
-//            errorCode = ErrorCode.valueOf(enumKey);
-//
-//            var constraintViolation =
-//                    exception.getBindingResult().getAllErrors().getFirst().unwrap(ConstraintViolation.class);
-//
-//            attributes = constraintViolation.getConstraintDescriptor().getAttributes();
-//
-//            log.info(attributes.toString());
-//
-//        } catch (IllegalArgumentException e) {
-//
-//        }
-//
-//        ApiResponse apiResponse = new ApiResponse();
-//
-//        apiResponse.setCode(errorCode.getCode());
-//        apiResponse.setMessage(
-//                Objects.nonNull(attributes)
-//                        ? mapAttribute(errorCode.getMessage(), attributes)
-//                        : errorCode.getMessage());
-//
-//        return ResponseEntity.badRequest().body(apiResponse);
-//    }
+    //    @ExceptionHandler(value = MethodArgumentNotValidException.class)
+    //    ResponseEntity<ApiResponse> handlingValidation(MethodArgumentNotValidException exception) {
+    //        String enumKey = exception.getFieldError().getDefaultMessage();
+    //
+    //        ErrorCode errorCode = ErrorCode.INVALID_KEY;
+    //        Map<String, Object> attributes = null;
+    //        try {
+    //            errorCode = ErrorCode.valueOf(enumKey);
+    //
+    //            var constraintViolation =
+    //                    exception.getBindingResult().getAllErrors().getFirst().unwrap(ConstraintViolation.class);
+    //
+    //            attributes = constraintViolation.getConstraintDescriptor().getAttributes();
+    //
+    //            log.info(attributes.toString());
+    //
+    //        } catch (IllegalArgumentException e) {
+    //
+    //        }
+    //
+    //        ApiResponse apiResponse = new ApiResponse();
+    //
+    //        apiResponse.setCode(errorCode.getCode());
+    //        apiResponse.setMessage(
+    //                Objects.nonNull(attributes)
+    //                        ? mapAttribute(errorCode.getMessage(), attributes)
+    //                        : errorCode.getMessage());
+    //
+    //        return ResponseEntity.badRequest().body(apiResponse);
+    //    }
 
     private String mapAttribute(String message, Map<String, Object> attributes) {
         String minValue = String.valueOf(attributes.get(MIN_ATTRIBUTE));

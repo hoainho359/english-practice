@@ -48,6 +48,7 @@ public class AuthenticationController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse> authenticated(@RequestBody AuthenticationRequest request) {
         val authentication = authenticationService.authentication(request);
+        log.info("Login controller reached");
         return ResponseEntity.status(HttpStatus.OK).body(
                 ApiResponse.builder()
                         .success(true)

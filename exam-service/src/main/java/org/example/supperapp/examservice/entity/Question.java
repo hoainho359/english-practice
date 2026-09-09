@@ -1,9 +1,9 @@
 package org.example.supperapp.examservice.entity;
 
+import java.util.List;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import java.util.List;
 
 @Getter
 @Setter
@@ -13,13 +13,13 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Question {
 
-     Integer questionNumber;
+    Integer questionNumber;
 
-     String content;
+    String content;
 
-     List<Option> options;
+    List<Option> options;
 
-     String explanation;
+    String explanation;
 
-     String imageBase64;
+    String imageBase64;
 }

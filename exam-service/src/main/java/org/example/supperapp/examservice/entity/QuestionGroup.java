@@ -1,10 +1,9 @@
 package org.example.supperapp.examservice.entity;
 
+import java.util.List;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-
-import java.util.List;
 
 @Getter
 @Setter
@@ -13,12 +12,12 @@ import java.util.List;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class QuestionGroup {
-      //ussing for part  6, 7
-       Integer groupNumber;
+    // ussing for part  6, 7
+    Integer groupNumber;
 
-       String passage;
+    String passage;
 
-       String audioUrl;
+    String audioUrl;
 
-       List<Question> questions;
+    List<Question> questions;
 }

@@ -1,12 +1,13 @@
 package org.example.supperapp.examservice.entity;
 
-import lombok.*;
-import lombok.experimental.FieldDefaults;
+import java.time.Instant;
+import java.util.List;
+
 import org.example.supperapp.examservice.entity.comon.BaseDocument;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.Instant;
-import java.util.List;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 
 @Getter
 @Setter
@@ -17,17 +18,17 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Result extends BaseDocument {
 
-     String userId;
+    String userId;
 
-     String examId;
+    String examId;
 
-     Instant startedAt;
+    Instant startedAt;
 
-     Instant submittedAt;
+    Instant submittedAt;
 
-     Integer score;
+    Integer score;
 
-     Integer totalQuestions;
+    Integer totalQuestions;
 
-     List<UserAnswer> answers;
+    List<UserAnswer> answers;
 }

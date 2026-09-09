@@ -1,8 +1,9 @@
 package org.example.supperapp.examservice.exception;
 
-import lombok.Getter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
+
+import lombok.Getter;
 
 @Getter
 public enum ErrorCode {
@@ -16,9 +17,8 @@ public enum ErrorCode {
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
     INVALID_DOB(1008, "Your age must be at least {min}", HttpStatus.BAD_REQUEST),
 
-    //file
-    PAYLOAD_TOO_LARGE(2000, "pauload too large must be < 50 mb", HttpStatus.PAYLOAD_TOO_LARGE)
-    ;
+    // file
+    PAYLOAD_TOO_LARGE(2000, "pauload too large must be < 50 mb", HttpStatus.PAYLOAD_TOO_LARGE);
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

@@ -11,13 +11,21 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.cloud.openfeign.EnableFeignClients;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import tools.jackson.databind.ObjectMapper;
@@ -30,17 +38,24 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
+@Configuration
 public class AuthenticationFilter implements GlobalFilter, Ordered {
     IdentityService identityService;
     ObjectMapper objectMapper;
 
     @NonFinal
-    String [] publicEndpoint = {"/identity/auth/.*", "/identity/users/registration"};
+    String [] publicEndpoint = {"/identity/auth/login", "/identity/users/registration"};
     @Value("${app.api-prefix}")
     @NonFinal
     String apiPrefix;
+    @NonFinal
+    AntPathMatcher pathMatcher = new AntPathMatcher();
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        // Allow CORS preflight requests through without authentication
+        if (exchange.getRequest().getMethod() == HttpMethod.OPTIONS) {
+            return chain.filter(exchange);
+        }
         //check public endpoint
         if (isPublicEndpoint(exchange.getRequest())){
             return chain.filter(exchange);
@@ -91,10 +106,13 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
 //        rq path/api/identity/auth/token
 //        tức là nó chir trả về endpoint sau phần context path mình khai báo ở
 //        applicaiton.yaml hay properties
-        return Arrays.stream(publicEndpoint)
-                .anyMatch(s ->
-                        request.getURI().getPath().matches(apiPrefix + s )
-                );
+        // Dùng pathMatcher.match thay cho matches() của String
+        boolean isPublic = Arrays.stream(publicEndpoint)
+                .anyMatch(s -> pathMatcher.match(apiPrefix + s, request.getURI().getPath()));
+
+        log.info("isPublic = {}", isPublic);
+
+        return isPublic;
     }
     @Override
     public int getOrder() {

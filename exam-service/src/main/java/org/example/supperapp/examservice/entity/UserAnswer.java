@@ -10,9 +10,9 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UserAnswer {
 
-     Integer questionNumber;
+    Integer questionNumber;
 
-     String selectedOption;
+    String selectedOption;
 
-     Boolean correct;
+    Boolean correct;
 }

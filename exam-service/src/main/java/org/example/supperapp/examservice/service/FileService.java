@@ -1,7 +1,20 @@
 package org.example.supperapp.examservice.service;
 
-import lombok.RequiredArgsConstructor;
-import net.sourceforge.tess4j.ITesseract;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
+
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
@@ -16,20 +29,8 @@ import org.example.supperapp.examservice.repository.ExamRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.imageio.IIOImage;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageWriteParam;
-import javax.imageio.ImageWriter;
-import javax.imageio.stream.ImageOutputStream;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import lombok.RequiredArgsConstructor;
+import net.sourceforge.tess4j.ITesseract;
 
 @Service
 @RequiredArgsConstructor
@@ -38,9 +39,7 @@ public class FileService {
     private final ExamRepository examRepository;
     private final ITesseract tesseract;
 
-    public void uploadFile(MultipartFile file,
-                           Integer year,
-                           Integer testNumber) throws Exception {
+    public void uploadFile(MultipartFile file, Integer year, Integer testNumber) throws Exception {
 
         try (PDDocument document = Loader.loadPDF(file.getBytes())) {
 
@@ -58,13 +57,11 @@ public class FileService {
             examRepository.save(parsePart7(document, year, testNumber));
         }
     }
-   /* ==========================================================
-                          PART 1
-       ========================================================== */
+    /* ==========================================================
+    					PART 1
+    ========================================================== */
 
-    private Exam parsePart1(PDDocument document,
-                            Integer year,
-                            Integer testNumber) throws IOException {
+    private Exam parsePart1(PDDocument document, Integer year, Integer testNumber) throws IOException {
 
         PDFRenderer renderer = new PDFRenderer(document);
 
@@ -79,13 +76,9 @@ public class FileService {
             int w = img.getWidth();
             int h = img.getHeight();
 
-            questions.add(buildImageQuestion(
-                    number++,
-                    img.getSubimage(0, 0, w, h / 2)));
+            questions.add(buildImageQuestion(number++, img.getSubimage(0, 0, w, h / 2)));
 
-            questions.add(buildImageQuestion(
-                    number++,
-                    img.getSubimage(0, h / 2, w, h / 2)));
+            questions.add(buildImageQuestion(number++, img.getSubimage(0, h / 2, w, h / 2)));
         }
 
         return Exam.builder()
@@ -98,8 +91,7 @@ public class FileService {
                 .build();
     }
 
-    private Question buildImageQuestion(int number,
-                                        BufferedImage image) throws IOException {
+    private Question buildImageQuestion(int number, BufferedImage image) throws IOException {
 
         return Question.builder()
                 .questionNumber(number)
@@ -107,74 +99,61 @@ public class FileService {
                 .options(new ArrayList<>())
                 .build();
     }
-    private String toCompressedBase64(BufferedImage image)
-            throws IOException {
+
+    private String toCompressedBase64(BufferedImage image) throws IOException {
 
         BufferedImage resized = resize(image, 600);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
-        ImageWriter writer =
-                ImageIO.getImageWritersByFormatName("jpg").next();
+        ImageWriter writer = ImageIO.getImageWritersByFormatName("jpg").next();
 
-        ImageOutputStream ios =
-                ImageIO.createImageOutputStream(out);
+        ImageOutputStream ios = ImageIO.createImageOutputStream(out);
 
         writer.setOutput(ios);
 
-        ImageWriteParam param =
-                writer.getDefaultWriteParam();
+        ImageWriteParam param = writer.getDefaultWriteParam();
 
         param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
         param.setCompressionQuality(0.6f);
 
-        writer.write(null,
-                new IIOImage(resized, null, null),
-                param);
+        writer.write(null, new IIOImage(resized, null, null), param);
 
         ios.close();
         writer.dispose();
 
         return Base64.getEncoder().encodeToString(out.toByteArray());
     }
-    private BufferedImage resize(BufferedImage original,
-                                 int width) {
+
+    private BufferedImage resize(BufferedImage original, int width) {
 
         int height = original.getHeight() * width / original.getWidth();
 
-        BufferedImage img =
-                new BufferedImage(width, height,
-                        BufferedImage.TYPE_INT_RGB);
+        BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 
         Graphics2D g = img.createGraphics();
 
-        g.drawImage(original,
-                0, 0,
-                width, height,
-                null);
+        g.drawImage(original, 0, 0, width, height, null);
 
         g.dispose();
 
         return img;
     }
 
-     /* ==========================================================
-                          PART 2
-       ========================================================== */
+    /* ==========================================================
+    					PART 2
+    ========================================================== */
 
-    private Exam parsePart2(Integer year,
-                            Integer testNumber) {
+    private Exam parsePart2(Integer year, Integer testNumber) {
 
         List<Question> questions = new ArrayList<>();
 
         for (int i = 7; i <= 31; i++) {
 
-            questions.add(
-                    Question.builder()
-                            .questionNumber(i)
-                            .options(new ArrayList<>())
-                            .build()
-            );
+            questions.add(Question.builder()
+                    .questionNumber(i)
+                    .options(new ArrayList<>())
+                    .build());
         }
 
         return Exam.builder()
@@ -187,13 +166,11 @@ public class FileService {
                 .build();
     }
 
-/* ==========================================================
-                      PART 3 & PART 4 PARSER
-   ========================================================== */
+    /* ==========================================================
+    					PART 3 & PART 4 PARSER
+    ========================================================== */
 
-    private Exam parsePart3(PDDocument document,
-                            Integer year,
-                            Integer testNumber) throws Exception {
+    private Exam parsePart3(PDDocument document, Integer year, Integer testNumber) throws Exception {
 
         int part3Page = findPartPage(document, "PART 3");
         int part4Page = findPartPage(document, "PART 4");
@@ -208,9 +185,7 @@ public class FileService {
                 .build();
     }
 
-    private Exam parsePart4(PDDocument document,
-                            Integer year,
-                            Integer testNumber) throws Exception {
+    private Exam parsePart4(PDDocument document, Integer year, Integer testNumber) throws Exception {
 
         int part4Page = findPartPage(document, "PART 4");
 
@@ -223,11 +198,9 @@ public class FileService {
                 .groups(parseListening(document, part4Page, document.getNumberOfPages() - 1, 71, 100))
                 .build();
     }
-    private List<QuestionGroup> parseListening(PDDocument document,
-                                               int startPage,
-                                               int endPage,
-                                               int startQ,
-                                               int maxQ) throws IOException {
+
+    private List<QuestionGroup> parseListening(PDDocument document, int startPage, int endPage, int startQ, int maxQ)
+            throws IOException {
 
         List<QuestionGroup> groups = new ArrayList<>();
 
@@ -292,6 +265,7 @@ public class FileService {
 
         return fullTextBuilder.toString();
     }
+
     private Question parseQuestionByNumber(String fullText, int qNum) {
         // 1. Tìm điểm bắt đầu câu hỏi (vd: "32.")
         Pattern startPattern = Pattern.compile("(?:^|\\n|\\s)" + qNum + "\\.\\s*");
@@ -338,8 +312,7 @@ public class FileService {
                         option("A", textA, false),
                         option("B", textB, false),
                         option("C", textC, false),
-                        option("D", textD, false)
-                ))
+                        option("D", textD, false)))
                 .explanation(null)
                 .imageBase64(null)
                 .build();
@@ -350,13 +323,12 @@ public class FileService {
         Pattern p = Pattern.compile("\\(\\s*" + label + "\\s*\\)");
         Matcher m = p.matcher(text);
         if (m.find(startIndex)) {
-            return new int[]{m.start(), m.end()};
+            return new int[] {m.start(), m.end()};
         }
         return null;
     }
 
-    private int findPartPage(PDDocument document,
-                             String keyword) throws IOException {
+    private int findPartPage(PDDocument document, String keyword) throws IOException {
 
         PDFTextStripper stripper = new PDFTextStripper();
 
@@ -374,27 +346,22 @@ public class FileService {
 
         throw new IllegalStateException("Không tìm thấy " + keyword + " trong PDF");
     }
+
     private Option option(String label, String text, boolean correct) {
-        return Option.builder()
-                .label(label)
-                .text(clean(text))
-                .correct(correct)
-                .build();
+        return Option.builder().label(label).text(clean(text)).correct(correct).build();
     }
+
     private String clean(String text) {
-        return text
-                .replace('\u00A0', ' ')          // non-breaking space
+        return text.replace('\u00A0', ' ') // non-breaking space
                 .replaceAll("[ \t]+", " ")
                 .replaceAll("\\s*\\n\\s*", " ")
                 .trim();
     }
-/* ==========================================================
-                          PART 5 PARSER
-       ========================================================== */
+    /* ==========================================================
+    					PART 5 PARSER
+    ========================================================== */
 
-    private Exam parsePart5(PDDocument document,
-                            Integer year,
-                            Integer testNumber) throws Exception {
+    private Exam parsePart5(PDDocument document, Integer year, Integer testNumber) throws Exception {
 
         int part5Page = findPartPage(document, "PART 5");
         int part6Page = findPartPage(document, "PART 6");
@@ -419,12 +386,10 @@ public class FileService {
                 .build();
     }
     /* ==========================================================
-                      PART 6 & PART 7 PARSER
-   ========================================================== */
+    					PART 6 & PART 7 PARSER
+    ========================================================== */
 
-    private Exam parsePart6(PDDocument document,
-                            Integer year,
-                            Integer testNumber) throws Exception {
+    private Exam parsePart6(PDDocument document, Integer year, Integer testNumber) throws Exception {
 
         int part6Page = findPartPage(document, "PART 6");
         int part7Page = findPartPage(document, "PART 7");
@@ -441,9 +406,7 @@ public class FileService {
                 .build();
     }
 
-    private Exam parsePart7(PDDocument document,
-                            Integer year,
-                            Integer testNumber) throws Exception {
+    private Exam parsePart7(PDDocument document, Integer year, Integer testNumber) throws Exception {
 
         int part7Page = findPartPage(document, "PART 7");
         int lastPage = document.getNumberOfPages() - 1;
@@ -463,17 +426,16 @@ public class FileService {
     /**
      * Tách đoạn văn (Passage) và các câu hỏi thuộc Part 6 & Part 7
      */
-    private List<QuestionGroup> parseReadingPassageGroups(PDDocument document,
-                                                          int startPage,
-                                                          int endPage,
-                                                          int minQ,
-                                                          int maxQ) throws IOException {
+    private List<QuestionGroup> parseReadingPassageGroups(
+            PDDocument document, int startPage, int endPage, int minQ, int maxQ) throws IOException {
 
         List<QuestionGroup> groups = new ArrayList<>();
         String fullText = extractTextWithColumns(document, startPage, endPage);
 
         // Regex tìm tiêu đề nhóm: "Questions 131-134 refer to the following..."
-        Pattern headerPattern = Pattern.compile("Questions\\s+(\\d{3})\\s*-\\s*(\\d{3})\\s+refer\\s+to\\s+the\\s+following\\s+([^.\\n]+)", Pattern.CASE_INSENSITIVE);
+        Pattern headerPattern = Pattern.compile(
+                "Questions\\s+(\\d{3})\\s*-\\s*(\\d{3})\\s+refer\\s+to\\s+the\\s+following\\s+([^.\\n]+)",
+                Pattern.CASE_INSENSITIVE);
         Matcher matcher = headerPattern.matcher(fullText);
 
         List<int[]> groupBounds = new ArrayList<>();
@@ -486,7 +448,7 @@ public class FileService {
             int qEnd = Integer.parseInt(matcher.group(2));
 
             if (qStart >= minQ && qEnd <= maxQ) {
-                groupBounds.add(new int[]{matcher.start(), matcher.end()});
+                groupBounds.add(new int[] {matcher.start(), matcher.end()});
                 startQs.add(qStart);
                 endQs.add(qEnd);
                 passageTitles.add(matcher.group(3).trim());

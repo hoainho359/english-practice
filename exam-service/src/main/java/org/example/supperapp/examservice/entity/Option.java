@@ -1,10 +1,7 @@
 package org.example.supperapp.examservice.entity;
 
-
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-
-import java.util.List;
 
 @Getter
 @Setter
@@ -14,9 +11,9 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Option {
 
-      String label;
+    String label;
 
-      String text;
+    String text;
 
-      Boolean correct;
+    Boolean correct;
 }
