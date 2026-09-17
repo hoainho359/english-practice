@@ -51,6 +51,15 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
+    @ExceptionHandler(value = PdfImportException.class)
+    ResponseEntity<ApiResponse> handlingPdfImportException(PdfImportException exception) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.builder()
+                        .code(2001)
+                        .message(exception.getMessage())
+                        .build());
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiResponse> handleMaxSizeException(MaxUploadSizeExceededException exc) {
         ErrorCode errorCode = ErrorCode.PAYLOAD_TOO_LARGE;
