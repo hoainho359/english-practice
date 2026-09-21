@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -21,14 +20,6 @@ import lombok.RequiredArgsConstructor;
 
 @Configuration
 @RequiredArgsConstructor
-@EnableMongoAuditing
-/*
-Tự động điền thời gian:
-Tự động gán giá trị thời gian lúc tạo (@CreatedDate) và
-lúc cập nhật gần nhất (@LastModifiedDate).
-Tự động ghi lại tên người tạo (@CreatedBy) hoặc
-người chỉnh sửa cuối cùng (@LastModifiedBy) thông qua bean
- */
 public class SecurityConfig {
     private final CustomJwtDecoder customJwtDecoder;
 
@@ -45,6 +36,8 @@ public class SecurityConfig {
                             authorizationManagerRequestMatcherRegistry -> authorizationManagerRequestMatcherRegistry
                                     .requestMatchers(HttpMethod.GET, PUBLIC_ENTRY_POINT)
                                     .permitAll()
+                                    .requestMatchers(HttpMethod.POST, "/file/**")
+                                    .hasAuthority("ROLE_admin")
                                     .anyRequest()
                                     .authenticated())
                     .oauth2ResourceServer(

@@ -2,18 +2,17 @@ package org.example.supperapp.examservice.repository;
 
 import java.util.List;
 
-import org.example.supperapp.examservice.entity.Exam;
-import org.springframework.data.mongodb.repository.Aggregation;
-import org.springframework.data.mongodb.repository.MongoRepository;
+import org.example.supperapp.examservice.entity.ExamEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ExamRepository extends MongoRepository<Exam, String> {
+public interface ExamRepository extends JpaRepository<ExamEntity, Long> {
 
-    @Aggregation(
-            pipeline = {
-                "{ $match: { year: ?0 } }",
-                "{ $group: { _id: '$year', testNumbers: { $addToSet: '$testNumber' } } }"
-            })
-    List<Object> getListTestOfYear(int year);
+    @Query("select distinct e.testNumber from ExamEntity e where e.year = :year order by e.testNumber")
+    List<Integer> getListTestOfYear(@Param("year") int year);
+
+    List<ExamEntity> findAllByYearAndTestNumberOrderByPartNumber(int year, int testNumber);
 }

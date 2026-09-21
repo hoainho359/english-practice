@@ -1,27 +1,5 @@
 package org.example.supperapp.examservice.service;
 
-import lombok.RequiredArgsConstructor;
-import net.sourceforge.tess4j.ITesseract;
-import net.sourceforge.tess4j.TesseractException;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.rendering.PDFRenderer;
-import org.apache.pdfbox.text.PDFTextStripper;
-import org.apache.pdfbox.text.PDFTextStripperByArea;
-import org.example.supperapp.examservice.entity.Exam;
-import org.example.supperapp.examservice.entity.Option;
-import org.example.supperapp.examservice.entity.Question;
-import org.example.supperapp.examservice.entity.QuestionGroup;
-import org.example.supperapp.examservice.entity.enumeric.PartType;
-import org.example.supperapp.examservice.exception.PdfImportException;
-import org.springframework.stereotype.Component;
-
-import javax.imageio.IIOImage;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageWriteParam;
-import javax.imageio.ImageWriter;
-import javax.imageio.stream.ImageOutputStream;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.Rectangle2D;
@@ -37,29 +15,51 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
+
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.rendering.PDFRenderer;
+import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.pdfbox.text.PDFTextStripperByArea;
+import org.example.supperapp.examservice.entity.ExamEntity;
+import org.example.supperapp.examservice.entity.OptionEntity;
+import org.example.supperapp.examservice.entity.PassageEntity;
+import org.example.supperapp.examservice.entity.QuestionEntity;
+import org.example.supperapp.examservice.entity.enumeric.ContextType;
+import org.example.supperapp.examservice.entity.enumeric.PartType;
+import org.example.supperapp.examservice.exception.PdfImportException;
+import org.springframework.stereotype.Component;
+
+import lombok.RequiredArgsConstructor;
+import net.sourceforge.tess4j.ITesseract;
+import net.sourceforge.tess4j.TesseractException;
 
 @Component
 @RequiredArgsConstructor
 public class ToeicPdfParser {
 
-    private static final Pattern PART_HEADING =
-            Pattern.compile("(?im)^\\s*PART\\s+([1-7])\\b");
-    private static final Pattern GROUP_HEADING = Pattern.compile(
-            "(?im)^\\s*Questions?\\s+(\\d{1,3})\\s*[\\p{Pd}-]\\s*(\\d{1,3})"
+    private static final Pattern PART_HEADING = Pattern.compile("(?im)^\\s*PART\\s+([1-7])\\b");
+    private static final Pattern GROUP_HEADING =
+            Pattern.compile("(?im)^\\s*Questions?\\s+(\\d{1,3})\\s*[\\p{Pd}-]\\s*(\\d{1,3})"
                     + "\\s+refer(?:s)?\\s+to\\s+the\\s+following\\s+([^\\r\\n]+)");
-    private static final Pattern ANY_QUESTION_START =
-            Pattern.compile("(?m)^\\s*(\\d{1,3})\\s*[.]\\s*");
+    private static final Pattern ANY_QUESTION_START = Pattern.compile("(?m)^\\s*(\\d{1,3})\\s*[.]\\s*");
     private static final Pattern PAGE_NOISE = Pattern.compile(
             "(?im)^\\s*(?:GO\\s*ON\\s*TO\\s*THE\\s*NEXT\\s*PAGE|TEST\\s+\\d+\\s+\\d+|PART\\s+[1-7]|Directions:)\\b.*$");
-    private static final Pattern GROUP_NOISE = Pattern.compile(
-            "(?im)^\\s*Questions?\\s+\\d{1,3}\\s*[\\p{Pd}-]\\s*\\d{1,3}\\s+refer(?:s)?\\b.*$");
+    private static final Pattern GROUP_NOISE =
+            Pattern.compile("(?im)^\\s*Questions?\\s+\\d{1,3}\\s*[\\p{Pd}-]\\s*\\d{1,3}\\s+refer(?:s)?\\b.*$");
     private static final List<String> FOUR_LABELS = List.of("A", "B", "C", "D");
     private static final List<String> THREE_LABELS = List.of("A", "B", "C");
     private static final int OCR_DPI = 220;
 
     private final ITesseract tesseract;
 
-    public List<Exam> parse(PDDocument document, int year, int testNumber) {
+    public List<ExamEntity> parse(PDDocument document, int year, int testNumber) {
         if (document.getNumberOfPages() == 0) {
             throw new PdfImportException("PDF has no pages");
         }
@@ -70,27 +70,22 @@ public class ToeicPdfParser {
         boolean reading = looksLikeReading(partPages);
 
         if (!listening && !reading) {
-            throw new PdfImportException(
-                    "Unsupported PDF: expected an ETS TOEIC Listening or Reading test book");
+            throw new PdfImportException("Unsupported PDF: expected an ETS TOEIC Listening or Reading test book");
         }
 
-        List<Exam> parts = new ArrayList<>();
+        List<ExamEntity> parts = new ArrayList<>();
         if (listening) {
             requireParts(partPages, 1, 2, 3, 4);
             parts.add(parsePart1(context, partPages, year, testNumber));
             parts.add(parsePart2(year, testNumber));
-            parts.add(parseListeningPart(
-                    context, partPages, year, testNumber, 3, 32, 70, "Conversations"));
-            parts.add(parseListeningPart(
-                    context, partPages, year, testNumber, 4, 71, 100, "Talks"));
+            parts.add(parseListeningPart(context, partPages, year, testNumber, 3, 32, 70, "Conversations"));
+            parts.add(parseListeningPart(context, partPages, year, testNumber, 4, 71, 100, "Talks"));
         }
         if (reading) {
             requireParts(partPages, 5, 6, 7);
             parts.add(parsePart5(context, partPages, year, testNumber));
-            parts.add(parseReadingPart(
-                    context, partPages, year, testNumber, 6, 131, 146, "Text Completion"));
-            parts.add(parseReadingPart(
-                    context, partPages, year, testNumber, 7, 147, 200, "Reading Comprehension"));
+            parts.add(parseReadingPart(context, partPages, year, testNumber, 6, 131, 146, "Text Completion"));
+            parts.add(parseReadingPart(context, partPages, year, testNumber, 7, 147, 200, "Reading Comprehension"));
         }
         return parts;
     }
@@ -125,29 +120,19 @@ public class ToeicPdfParser {
         }
     }
 
-    private Exam parsePart1(
-            ParsingContext context,
-            Map<Integer, Integer> partPages,
-            int year,
-            int testNumber) {
+    private ExamEntity parsePart1(ParsingContext context, Map<Integer, Integer> partPages, int year, int testNumber) {
         int firstPhotoPage = partPages.get(1) + 1;
         int part2Page = partPages.get(2);
-        List<Question> questions = new ArrayList<>();
+        List<QuestionEntity> questions = new ArrayList<>();
 
         for (int page = firstPhotoPage; page < part2Page && questions.size() < 6; page++) {
             BufferedImage rendered = context.render(page, 160);
             int split = rendered.getHeight() / 2;
-            questions.add(imageQuestion(
-                    questions.size() + 1,
-                    rendered.getSubimage(0, 0, rendered.getWidth(), split)));
+            questions.add(imageQuestion(questions.size() + 1, rendered.getSubimage(0, 0, rendered.getWidth(), split)));
             if (questions.size() < 6) {
                 questions.add(imageQuestion(
                         questions.size() + 1,
-                        rendered.getSubimage(
-                                0,
-                                split,
-                                rendered.getWidth(),
-                                rendered.getHeight() - split)));
+                        rendered.getSubimage(0, split, rendered.getWidth(), rendered.getHeight() - split)));
             }
         }
 
@@ -155,33 +140,26 @@ public class ToeicPdfParser {
         return exam(year, testNumber, 1, PartType.LISTENING, "Photographs", questions, null);
     }
 
-    private Question imageQuestion(int questionNumber, BufferedImage image) {
-        return Question.builder()
+    private QuestionEntity imageQuestion(int questionNumber, BufferedImage image) {
+        return QuestionEntity.builder()
                 .questionNumber(questionNumber)
                 .imageBase64(toJpegBase64(image, 750, 0.72f))
                 .options(emptyOptions(FOUR_LABELS))
                 .build();
     }
 
-    private Exam parsePart2(int year, int testNumber) {
-        List<Question> questions = new ArrayList<>();
+    private ExamEntity parsePart2(int year, int testNumber) {
+        List<QuestionEntity> questions = new ArrayList<>();
         for (int number = 7; number <= 31; number++) {
-            questions.add(Question.builder()
+            questions.add(QuestionEntity.builder()
                     .questionNumber(number)
                     .options(emptyOptions(THREE_LABELS))
                     .build());
         }
-        return exam(
-                year,
-                testNumber,
-                2,
-                PartType.LISTENING,
-                "Question-Response",
-                questions,
-                null);
+        return exam(year, testNumber, 2, PartType.LISTENING, "Question-Response", questions, null);
     }
 
-    private Exam parseListeningPart(
+    private ExamEntity parseListeningPart(
             ParsingContext context,
             Map<Integer, Integer> partPages,
             int year,
@@ -193,15 +171,21 @@ public class ToeicPdfParser {
         int startPage = partPages.get(partNumber);
         int endPage = partNumber == 4 ? context.pageCount() : partPages.get(partNumber + 1);
         String questionText = context.columnText(startPage, endPage);
-        List<Question> questions = parseQuestions(questionText, firstQuestion, lastQuestion);
+        List<QuestionEntity> questions = parseQuestions(questionText, firstQuestion, lastQuestion);
         attachGraphicPages(context, startPage, endPage, questions);
 
-        List<QuestionGroup> groups = new ArrayList<>();
+        List<PassageEntity> groups = new ArrayList<>();
         int groupNumber = 1;
         for (int offset = 0; offset < questions.size(); offset += 3) {
-            groups.add(QuestionGroup.builder()
+            int groupFirstQuestion = questions.get(offset).getQuestionNumber();
+            int groupLastQuestion = questions.get(offset + 2).getQuestionNumber();
+            groups.add(PassageEntity.builder()
                     .groupNumber(groupNumber++)
-                    .transcript(null)
+                    .partNumber(partNumber)
+                    .firstQuestionNumber(groupFirstQuestion)
+                    .lastQuestionNumber(groupLastQuestion)
+                    .contextType(ContextType.LISTENING_TRANSCRIPT)
+                    .content(null)
                     .questions(new ArrayList<>(questions.subList(offset, offset + 3)))
                     .build());
         }
@@ -210,56 +194,36 @@ public class ToeicPdfParser {
     }
 
     private void attachGraphicPages(
-            ParsingContext context,
-            int startPage,
-            int endPage,
-            List<Question> questions) {
+            ParsingContext context, int startPage, int endPage, List<QuestionEntity> questions) {
         Map<Integer, String> renderedPages = new HashMap<>();
         questions.stream()
                 .filter(question -> question.getContent() != null)
-                .filter(question -> question.getContent().toLowerCase(Locale.ROOT).contains("graphic"))
+                .filter(question ->
+                        question.getContent().toLowerCase(Locale.ROOT).contains("graphic"))
                 .forEach(question -> {
-                    int page = findQuestionPage(
-                            context,
-                            startPage,
-                            endPage,
-                            question.getQuestionNumber());
+                    int page = findQuestionPage(context, startPage, endPage, question.getQuestionNumber());
                     String image = renderedPages.computeIfAbsent(
-                            page,
-                            key -> toJpegBase64(context.render(key, 140), 900, 0.72f));
+                            page, key -> toJpegBase64(context.render(key, 140), 900, 0.72f));
                     question.setImageBase64(image);
                 });
     }
 
-    private int findQuestionPage(
-            ParsingContext context, int startPage, int endPage, int questionNumber) {
+    private int findQuestionPage(ParsingContext context, int startPage, int endPage, int questionNumber) {
         for (int page = startPage; page < endPage; page++) {
             if (parseQuestionByNumber(context.columnText(page, page + 1), questionNumber) != null) {
                 return page;
             }
         }
-        throw new PdfImportException(
-                "Cannot locate source page for graphic question " + questionNumber);
+        throw new PdfImportException("Cannot locate source page for graphic question " + questionNumber);
     }
 
-    private Exam parsePart5(
-            ParsingContext context,
-            Map<Integer, Integer> partPages,
-            int year,
-            int testNumber) {
+    private ExamEntity parsePart5(ParsingContext context, Map<Integer, Integer> partPages, int year, int testNumber) {
         String text = context.columnText(partPages.get(5), partPages.get(6));
-        List<Question> questions = parseQuestions(text, 101, 130);
-        return exam(
-                year,
-                testNumber,
-                5,
-                PartType.READING,
-                "Incomplete Sentences",
-                questions,
-                null);
+        List<QuestionEntity> questions = parseQuestions(text, 101, 130);
+        return exam(year, testNumber, 5, PartType.READING, "Incomplete Sentences", questions, null);
     }
 
-    private Exam parseReadingPart(
+    private ExamEntity parseReadingPart(
             ParsingContext context,
             Map<Integer, Integer> partPages,
             int year,
@@ -272,7 +236,7 @@ public class ToeicPdfParser {
         int endPage = partNumber == 7 ? context.pageCount() : partPages.get(partNumber + 1);
         String questionText = context.columnText(startPage, endPage);
         String naturalText = context.naturalText(startPage, endPage);
-        List<Question> questions = parseQuestions(questionText, firstQuestion, lastQuestion);
+        List<QuestionEntity> questions = parseQuestions(questionText, firstQuestion, lastQuestion);
         if (partNumber == 6) {
             questions.forEach(question -> {
                 if (question.getContent() == null || question.getContent().isBlank()) {
@@ -281,15 +245,15 @@ public class ToeicPdfParser {
             });
         }
 
-        List<QuestionGroup> groups = parseReadingGroups(
-                naturalText, questions, partNumber, firstQuestion, lastQuestion);
+        List<PassageEntity> groups =
+                parseReadingGroups(naturalText, questions, partNumber, firstQuestion, lastQuestion);
         return exam(year, testNumber, partNumber, PartType.READING, title, null, groups);
     }
 
-    List<Question> parseQuestions(String text, int firstQuestion, int lastQuestion) {
-        List<Question> result = new ArrayList<>();
+    List<QuestionEntity> parseQuestions(String text, int firstQuestion, int lastQuestion) {
+        List<QuestionEntity> result = new ArrayList<>();
         for (int questionNumber = firstQuestion; questionNumber <= lastQuestion; questionNumber++) {
-            Question question = parseQuestionByNumber(text, questionNumber);
+            QuestionEntity question = parseQuestionByNumber(text, questionNumber);
             if (question == null) {
                 throw new PdfImportException("Question "
                         + questionNumber
@@ -301,9 +265,8 @@ public class ToeicPdfParser {
         return result;
     }
 
-    Question parseQuestionByNumber(String text, int questionNumber) {
-        Pattern target = Pattern.compile(
-                "(?m)^\\s*" + questionNumber + "\\s*[.]\\s*");
+    QuestionEntity parseQuestionByNumber(String text, int questionNumber) {
+        Pattern target = Pattern.compile("(?m)^\\s*" + questionNumber + "\\s*[.]\\s*");
         Matcher candidates = target.matcher(text);
 
         while (candidates.find()) {
@@ -316,14 +279,20 @@ public class ToeicPdfParser {
             }
 
             String content = cleanInline(block.substring(0, parsed.a().start()));
-            return Question.builder()
+            return QuestionEntity.builder()
                     .questionNumber(questionNumber)
                     .content(content.isBlank() ? null : content)
-                    .options(List.of(
-                            option("A", slice(block, parsed.a().end(), parsed.b().start())),
-                            option("B", slice(block, parsed.b().end(), parsed.c().start())),
-                            option("C", slice(block, parsed.c().end(), parsed.d().start())),
-                            option("D", cleanOptionD(block.substring(parsed.d().end())))))
+                    .options(new ArrayList<>(List.of(
+                            option(
+                                    "A",
+                                    slice(block, parsed.a().end(), parsed.b().start())),
+                            option(
+                                    "B",
+                                    slice(block, parsed.b().end(), parsed.c().start())),
+                            option(
+                                    "C",
+                                    slice(block, parsed.c().end(), parsed.d().start())),
+                            option("D", cleanOptionD(block.substring(parsed.d().end()))))))
                     .build();
         }
         return null;
@@ -343,19 +312,16 @@ public class ToeicPdfParser {
     }
 
     private Marker findOption(String text, String label, int fromIndex) {
-        Pattern pattern = Pattern.compile(
-                "(?m)^\\s*\\(\\s*" + Pattern.quote(label) + "\\s*\\)\\s*");
+        Pattern pattern = Pattern.compile("(?m)^\\s*\\(\\s*" + Pattern.quote(label) + "\\s*\\)\\s*");
         Matcher matcher = pattern.matcher(text);
         return matcher.find(fromIndex) ? new Marker(matcher.start(), matcher.end()) : null;
     }
 
-    private Option option(String label, String text) {
+    private OptionEntity option(String label, String text) {
         String cleaned = cleanInline(text);
-        return Option.builder()
+        return OptionEntity.builder()
                 .label(label)
                 .text(cleaned.isBlank() ? null : cleaned)
-                // These test books do not include an answer key. null means "unknown".
-                .correct(null)
                 .build();
     }
 
@@ -376,40 +342,38 @@ public class ToeicPdfParser {
         return cleanInline(text.substring(0, end));
     }
 
-    private List<QuestionGroup> parseReadingGroups(
-            String naturalText,
-            List<Question> questions,
-            int partNumber,
-            int firstQuestion,
-            int lastQuestion) {
+    private List<PassageEntity> parseReadingGroups(
+            String naturalText, List<QuestionEntity> questions, int partNumber, int firstQuestion, int lastQuestion) {
         List<GroupHeader> headers = findGroupHeaders(naturalText, firstQuestion, lastQuestion);
         validateGroupCoverage(headers, firstQuestion, lastQuestion);
 
-        Map<Integer, Question> byNumber = new LinkedHashMap<>();
+        Map<Integer, QuestionEntity> byNumber = new LinkedHashMap<>();
         questions.forEach(question -> byNumber.put(question.getQuestionNumber(), question));
 
-        List<QuestionGroup> groups = new ArrayList<>();
+        List<PassageEntity> groups = new ArrayList<>();
         for (int index = 0; index < headers.size(); index++) {
             GroupHeader header = headers.get(index);
-            int blockEnd = index + 1 < headers.size()
-                    ? headers.get(index + 1).headerStart()
-                    : naturalText.length();
+            int blockEnd = index + 1 < headers.size() ? headers.get(index + 1).headerStart() : naturalText.length();
             String block = naturalText.substring(header.contentStart(), blockEnd);
             int passageEnd = findPassageEnd(block, header.firstQuestion(), partNumber);
             String passage = cleanPassage(block.substring(0, passageEnd), partNumber);
 
-            List<Question> groupQuestions = new ArrayList<>();
+            List<QuestionEntity> groupQuestions = new ArrayList<>();
             for (int number = header.firstQuestion(); number <= header.lastQuestion(); number++) {
-                Question question = byNumber.get(number);
+                QuestionEntity question = byNumber.get(number);
                 if (question == null) {
                     throw new PdfImportException("Question " + number + " is missing from its passage group");
                 }
                 groupQuestions.add(question);
             }
 
-            groups.add(QuestionGroup.builder()
+            groups.add(PassageEntity.builder()
                     .groupNumber(groups.size() + 1)
-                    .passage(passage.isBlank() ? null : passage)
+                    .partNumber(partNumber)
+                    .firstQuestionNumber(header.firstQuestion())
+                    .lastQuestionNumber(header.lastQuestion())
+                    .contextType(ContextType.READING_PASSAGE)
+                    .content(passage.isBlank() ? null : passage)
                     .questions(groupQuestions)
                     .build());
         }
@@ -429,21 +393,16 @@ public class ToeicPdfParser {
         return headers;
     }
 
-    private void validateGroupCoverage(
-            List<GroupHeader> headers, int firstQuestion, int lastQuestion) {
+    private void validateGroupCoverage(List<GroupHeader> headers, int firstQuestion, int lastQuestion) {
         int expected = firstQuestion;
         for (GroupHeader header : headers) {
             if (header.firstQuestion() != expected || header.lastQuestion() < header.firstQuestion()) {
-                throw new PdfImportException(
-                        "Passage groups are incomplete near question " + expected);
+                throw new PdfImportException("Passage groups are incomplete near question " + expected);
             }
             expected = header.lastQuestion() + 1;
         }
         if (expected != lastQuestion + 1) {
-            throw new PdfImportException("Passage group is missing for questions "
-                    + expected
-                    + "-"
-                    + lastQuestion);
+            throw new PdfImportException("Passage group is missing for questions " + expected + "-" + lastQuestion);
         }
     }
 
@@ -480,39 +439,44 @@ public class ToeicPdfParser {
                 .trim();
     }
 
-    private List<Option> emptyOptions(List<String> labels) {
-        return labels.stream()
-                .map(label -> Option.builder().label(label).correct(null).build())
-                .toList();
+    private List<OptionEntity> emptyOptions(List<String> labels) {
+        return new ArrayList<>(labels.stream()
+                .map(label -> OptionEntity.builder().label(label).build())
+                .toList());
     }
 
-    private Exam exam(
+    private ExamEntity exam(
             int year,
             int testNumber,
             int partNumber,
             PartType type,
             String title,
-            List<Question> questions,
-            List<QuestionGroup> groups) {
-        return Exam.builder()
+            List<QuestionEntity> questions,
+            List<PassageEntity> groups) {
+        List<QuestionEntity> allQuestions = questions == null ? new ArrayList<>() : new ArrayList<>(questions);
+        if (groups != null) {
+            groups.stream()
+                    .flatMap(group -> group.getQuestions().stream())
+                    .filter(question -> !allQuestions.contains(question))
+                    .forEach(allQuestions::add);
+        }
+        ExamEntity exam = ExamEntity.builder()
                 .year(year)
                 .testNumber(testNumber)
                 .partNumber(partNumber)
                 .type(type)
                 .title(title)
-                .questions(questions)
-                .groups(groups)
+                .questions(allQuestions)
+                .passages(groups == null ? new ArrayList<>() : groups)
                 .build();
+        exam.wireRelationships();
+        return exam;
     }
 
     private void assertQuestionCount(int partNumber, int actual, int expected) {
         if (actual != expected) {
-            throw new PdfImportException("PART "
-                    + partNumber
-                    + " contains "
-                    + actual
-                    + " questions; expected "
-                    + expected);
+            throw new PdfImportException(
+                    "PART " + partNumber + " contains " + actual + " questions; expected " + expected);
         }
     }
 
@@ -522,9 +486,7 @@ public class ToeicPdfParser {
         BufferedImage resized = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Graphics2D graphics = resized.createGraphics();
         try {
-            graphics.setRenderingHint(
-                    RenderingHints.KEY_INTERPOLATION,
-                    RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             graphics.drawImage(source, 0, 0, width, height, null);
         } finally {
             graphics.dispose();
@@ -546,8 +508,7 @@ public class ToeicPdfParser {
         }
     }
 
-    record GroupHeader(
-            int firstQuestion, int lastQuestion, int headerStart, int contentStart) {}
+    record GroupHeader(int firstQuestion, int lastQuestion, int headerStart, int contentStart) {}
 
     private record Marker(int start, int end) {}
 
@@ -598,8 +559,7 @@ public class ToeicPdfParser {
                 String text = stripper.getText(document);
                 return text.isBlank() ? ocr(render(pageIndex, OCR_DPI)) : text;
             } catch (IOException exception) {
-                throw new PdfImportException(
-                        "Cannot extract text from PDF page " + (pageIndex + 1), exception);
+                throw new PdfImportException("Cannot extract text from PDF page " + (pageIndex + 1), exception);
             }
         }
 
@@ -613,38 +573,23 @@ public class ToeicPdfParser {
                 // A few ETS question numbers touch the center gutter (notably question 100).
                 // A small overlap prevents PDFBox from returning "00." in the right column.
                 float overlap = Math.min(12f, cropBox.getWidth() * 0.02f);
+                stripper.addRegion("left", new Rectangle2D.Float(0, 0, half, cropBox.getHeight()));
                 stripper.addRegion(
-                        "left",
-                        new Rectangle2D.Float(0, 0, half, cropBox.getHeight()));
-                stripper.addRegion(
-                        "right",
-                        new Rectangle2D.Float(
-                                half - overlap,
-                                0,
-                                half + overlap,
-                                cropBox.getHeight()));
+                        "right", new Rectangle2D.Float(half - overlap, 0, half + overlap, cropBox.getHeight()));
                 stripper.extractRegions(page);
                 String right = stripper.getTextForRegion("right")
                         // In some scans the leading "1" of 100 is placed just left of the
                         // center divider even when the rest of the question is in the right column.
                         .replaceAll("(?m)^\\s*00\\s*[.]", "100.");
-                String text = stripper.getTextForRegion("left")
-                        + "\n"
-                        + right;
+                String text = stripper.getTextForRegion("left") + "\n" + right;
                 if (!text.isBlank()) {
                     return text;
                 }
 
                 BufferedImage image = render(pageIndex, OCR_DPI);
                 int halfImage = image.getWidth() / 2;
-                int overlapImage = Math.min(
-                        image.getWidth() / 50,
-                        Math.max(1, image.getWidth() - halfImage - 1));
-                return ocr(image.getSubimage(
-                                0,
-                                0,
-                                halfImage,
-                                image.getHeight()))
+                int overlapImage = Math.min(image.getWidth() / 50, Math.max(1, image.getWidth() - halfImage - 1));
+                return ocr(image.getSubimage(0, 0, halfImage, image.getHeight()))
                         + "\n"
                         + ocr(image.getSubimage(
                                 halfImage - overlapImage,
@@ -652,8 +597,7 @@ public class ToeicPdfParser {
                                 image.getWidth() - halfImage + overlapImage,
                                 image.getHeight()));
             } catch (IOException exception) {
-                throw new PdfImportException(
-                        "Cannot extract columns from PDF page " + (pageIndex + 1), exception);
+                throw new PdfImportException("Cannot extract columns from PDF page " + (pageIndex + 1), exception);
             }
         }
 
@@ -661,8 +605,7 @@ public class ToeicPdfParser {
             try {
                 return renderer.renderImageWithDPI(pageIndex, dpi);
             } catch (IOException exception) {
-                throw new PdfImportException(
-                        "Cannot render PDF page " + (pageIndex + 1), exception);
+                throw new PdfImportException("Cannot render PDF page " + (pageIndex + 1), exception);
             }
         }
 
@@ -672,8 +615,7 @@ public class ToeicPdfParser {
                     return tesseract.doOCR(image);
                 }
             } catch (TesseractException exception) {
-                throw new PdfImportException(
-                        "PDF has no usable text layer and OCR failed", exception);
+                throw new PdfImportException("PDF has no usable text layer and OCR failed", exception);
             }
         }
     }

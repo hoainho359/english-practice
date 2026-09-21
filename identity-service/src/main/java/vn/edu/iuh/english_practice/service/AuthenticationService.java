@@ -14,6 +14,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import vn.edu.iuh.english_practice.dto.request.AuthenticationRequest;
@@ -23,6 +25,7 @@ import vn.edu.iuh.english_practice.dto.response.ApiResponse;
 import vn.edu.iuh.english_practice.dto.response.AuthenticationResponse;
 import vn.edu.iuh.english_practice.dto.response.ExchangeTokenResponse;
 import vn.edu.iuh.english_practice.dto.response.OutboundUserInfoResponse;
+import vn.edu.iuh.english_practice.configuration.GoogleIdTokenVerifier;
 import vn.edu.iuh.english_practice.entity.Permission;
 import vn.edu.iuh.english_practice.entity.Role;
 import vn.edu.iuh.english_practice.entity.User;
@@ -52,6 +55,7 @@ public class AuthenticationService {
     OutboundIdentityClient outboundIdentityClient;
     OutboundUserClient outboundUserClient;
     RoleRepository roleRepository;
+    GoogleIdTokenVerifier googleIdTokenVerifier;
 
 //    @Value("${outbound.identity.redirectUri}")
 //    @NonFinal
@@ -81,48 +85,72 @@ public class AuthenticationService {
           //sau khi user continue gg onboad vao db
           OutboundUserInfoResponse json = outboundUserClient.getUserInfo("json", exchangeTokenResponse.getAccessToken());
 
-          Optional<User> byProviderId = userRepository.findByProviderId(json.getId());
-
-          User user;
-
-          if (byProviderId.isEmpty()) {
-
-              Optional<Role> role =
-                      roleRepository.findByName("user")
-                              .stream()
-                              .findFirst();
-
-              Set<Role> roles = new HashSet<>();
-              roles.add(role.orElseThrow());
-
-              user = User.builder()
-                      .lastName(json.getGivenName())
-                      .firstName(json.getFamilyName())
-                      .userName(json.getEmail())
-                      .roles(roles)
-                      .provierId(json.getId())
-                      .build();
-
-              userRepository.save(user);
-
-          } else {
-              user = byProviderId.get();
-          }
-
           log.info("user info {}", json);
-
-          //generate token of sys instead of gg
-          String generatedToken = generateToken(user);
-
-          return AuthenticationResponse.builder()
-                  .isSuccess(true)
-                  .token(generatedToken)
-                  .build();
+          return authenticateGoogleUser(json);
       }catch (FeignException e){
           log.error("Google HTTP status: {}", e.status());
           log.error("Google response body: {}", e.contentUTF8());
           throw e;
       }
+    }
+
+    public AuthenticationResponse authenticateWithGoogleIdToken(String idToken) {
+        try {
+            Jwt googleToken = googleIdTokenVerifier.verify(idToken);
+            Boolean emailVerified = googleToken.getClaimAsBoolean("email_verified");
+            String email = googleToken.getClaimAsString("email");
+            String providerId = googleToken.getSubject();
+
+            if (!Boolean.TRUE.equals(emailVerified)
+                    || providerId == null
+                    || providerId.isBlank()
+                    || email == null
+                    || email.isBlank()) {
+                throw new AppException(ErrorCode.UNAUTHENTICATED);
+            }
+
+            OutboundUserInfoResponse googleUser = OutboundUserInfoResponse.builder()
+                    .id(providerId)
+                    .email(email)
+                    .name(googleToken.getClaimAsString("name"))
+                    .givenName(googleToken.getClaimAsString("given_name"))
+                    .familyName(googleToken.getClaimAsString("family_name"))
+                    .picture(googleToken.getClaimAsString("picture"))
+                    .build();
+
+            return authenticateGoogleUser(googleUser);
+        } catch (JwtException exception) {
+            log.warn("Rejected invalid Google ID token: {}", exception.getMessage());
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+    }
+
+    private AuthenticationResponse authenticateGoogleUser(
+            OutboundUserInfoResponse googleUser) {
+        User user = userRepository.findByProviderId(googleUser.getId())
+                .orElseGet(() -> createGoogleUser(googleUser));
+
+        return AuthenticationResponse.builder()
+                .isSuccess(true)
+                .token(generateToken(user))
+                .build();
+    }
+
+    private User createGoogleUser(OutboundUserInfoResponse googleUser) {
+        Role userRole = roleRepository.findByName("user")
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+
+        User user = User.builder()
+                .firstName(googleUser.getGivenName())
+                .lastName(googleUser.getFamilyName())
+                .userName(googleUser.getEmail())
+                .roles(Set.of(userRole))
+                .provierId(googleUser.getId())
+                .build();
+
+        return userRepository.save(user);
     }
     public String generateToken(User user) {
         JWSHeader jwsHeader = new JWSHeader(JWSAlgorithm.HS512);
