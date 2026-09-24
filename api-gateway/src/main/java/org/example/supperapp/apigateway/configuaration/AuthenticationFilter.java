@@ -10,8 +10,6 @@ import org.example.supperapp.apigateway.service.IdentityService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
-import org.springframework.cloud.openfeign.EnableFeignClients;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
@@ -22,19 +20,14 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.CollectionUtils;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import tools.jackson.databind.ObjectMapper;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
-@EnableFeignClients
+
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
@@ -72,21 +65,28 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         //if token exists and verify
-        String bearer = headers.getFirst().replace("Bearer ", "");
+        String authorization = headers.getFirst();
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            return unAuthentication(exchange.getResponse());
+        }
+        String bearer = authorization.substring("Bearer ".length()).trim();
+        if (bearer.isEmpty()) {
+            return unAuthentication(exchange.getResponse());
+        }
 
         /*
         flatMap có nhiệm vụ làm phẳng cấu trúc Mono<Mono<Void>> đó thành một Mono<Void> duy nhất,
          giúp chuỗi xử lý (reactive chain) chạy mượt mà theo đúng chuẩn của WebFlux.
          */
-        return identityService.introspect(bearer).flatMap(introspectResponseApiResponse ->
-        {
-            if (introspectResponseApiResponse.getResult().isValid()){
-                return chain.filter(exchange);
-            }
-            else
-                return unAuthentication(exchange.getResponse());
-
-        }).onErrorResume(throwable -> unAuthentication(exchange.getResponse()));
+        // FIX: defer also captures synchronous proxy/configuration failures in the reactive error chain.
+        return Mono.defer(() -> identityService.introspect(bearer))
+                .flatMap(response -> Boolean.TRUE.equals(response.getResult())
+                        ? chain.filter(exchange)
+                        : unAuthentication(exchange.getResponse()))
+                .onErrorResume(throwable -> {
+                    log.error("Identity service introspection failed", throwable);
+                    return authenticationServiceUnavailable(exchange.getResponse());
+                });
     }
 
     public Mono<Void> unAuthentication(ServerHttpResponse serverHttpResponse){
@@ -102,8 +102,21 @@ public class AuthenticationFilter implements GlobalFilter, Ordered {
         serverHttpResponse.getHeaders().add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
 
         return serverHttpResponse.writeWith(
-                Mono.just(serverHttpResponse.bufferFactory().wrap(body.getBytes()))
+                Mono.just(serverHttpResponse.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8)))
         );
+    }
+
+    private Mono<Void> authenticationServiceUnavailable(ServerHttpResponse response) {
+        ApiResponse<?> apiResponse = ApiResponse.builder()
+                .code(1503)
+                .message("authentication service unavailable")
+                .build();
+        String body = objectMapper.writeValueAsString(apiResponse);
+
+        response.setStatusCode(HttpStatus.SERVICE_UNAVAILABLE);
+        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+        return response.writeWith(Mono.just(
+                response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8))));
     }
     public boolean isPublicEndpoint(ServerHttpRequest request){
         log.info("rq path{}: ", request.getURI().getPath());

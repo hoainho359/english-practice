@@ -1,6 +1,7 @@
 package org.example.supperapp.examservice.controller;
 
 import org.example.supperapp.examservice.service.FileService;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,7 +28,7 @@ public class FileController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/import-listening-answer")
+    @PostMapping(value = "/import-listening-answer", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Void> importListeningAnswer(
             @RequestPart("file") MultipartFile file, @RequestParam Integer year, @RequestParam Integer testNumber) {
         fileService.uploadListeningAnswer(file, year, testNumber);
