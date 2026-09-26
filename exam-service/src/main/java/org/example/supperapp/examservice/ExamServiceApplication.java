@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 // })
 // tắt tự config của jpa khi test prj mà chưa khai báo các properties
 @SpringBootApplication
-@EnableJpaAuditing
+@EnableJpaAuditing // auto fill time in entity
 public class ExamServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(ExamServiceApplication.class, args);

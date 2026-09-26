@@ -71,14 +71,18 @@ public class AuthenticationController {
         );
     }
 
-    @PostMapping("/intropect")
-    public ApiResponse<Boolean> authenticated(@RequestBody IntropectTokenRequest intropectTokenRequest) throws ParseException, JOSEException {
-        System.out.println("log intropect: " + intropectTokenRequest.getToken());
-        boolean b = authenticationService.intropectToken(intropectTokenRequest);
+    // FIX: expose the correctly-spelled endpoint used by API Gateway.
+    // Keep /intropect temporarily so older clients do not break during deployment.
+    @PostMapping({"/introspect", "/intropect"})
+    public ApiResponse<Boolean> introspect(@RequestBody IntropectTokenRequest intropectTokenRequest)
+            throws ParseException, JOSEException {
+        boolean valid = authenticationService.intropectToken(intropectTokenRequest);
         return ApiResponse.<Boolean>builder()
                 .code(200)
-                .success(b)
-                .message(b ? "authenticated" : "unauthenticated")
+                .success(valid)
+                .message(valid ? "authenticated" : "unauthenticated")
+                // FIX: Gateway reads result to decide whether the protected request may continue.
+                .result(valid)
                 .build();
     }
 

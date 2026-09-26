@@ -3,6 +3,7 @@ package org.example.supperapp.examservice.service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,6 +30,8 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class FileService {
+
+    private static final byte[] PDF_SIGNATURE = {'%', 'P', 'D', 'F', '-'};
 
     private final ExamRepository examRepository;
     private final ToeicPdfParser toeicPdfParser;
@@ -130,6 +133,17 @@ public class FileService {
                     findOrCreatePassage(exam, group.firstQuestion(), group.firstQuestion(), group.lastQuestion());
             passage.setContextType(ContextType.LISTENING_TRANSCRIPT);
             passage.setContent(group.transcript());
+
+            // FIX: Always link every question in a Part 3/4 range to the transcript.
+            // This also works when the original test-book import did not create a passage beforehand.
+            for (int number = group.firstQuestion(); number <= group.lastQuestion(); number++) {
+                QuestionEntity question = requireQuestion(byQuestion, number);
+                if (!passage.getQuestions().contains(question)) {
+                    passage.getQuestions().add(question);
+                }
+                question.setPassage(passage);
+                question.setExam(exam);
+            }
         });
 
         parts.forEach(part -> {
@@ -189,6 +203,18 @@ public class FileService {
         }
         if (testNumber == null || testNumber < 1) {
             throw new PdfImportException("testNumber must be greater than zero");
+        }
+
+        // FIX: Check the real file signature instead of trusting the client-supplied MIME type/extension.
+        try (InputStream input = file.getInputStream()) {
+            byte[] signature = input.readNBytes(PDF_SIGNATURE.length);
+            if (!Arrays.equals(signature, PDF_SIGNATURE)) {
+                throw new PdfImportException("Uploaded file must be a valid PDF document");
+            }
+        } catch (PdfImportException exception) {
+            throw exception;
+        } catch (IOException exception) {
+            throw new PdfImportException("Cannot read the uploaded PDF file", exception);
         }
     }
 }

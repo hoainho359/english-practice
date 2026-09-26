@@ -60,6 +60,15 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
+    @ExceptionHandler(ExamSubmissionException.class)
+    ResponseEntity<ApiResponse> handlingExamSubmissionException(ExamSubmissionException exception) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(ApiResponse.builder()
+                        .code(exception.getCode())
+                        .message(exception.getMessage())
+                        .build());
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiResponse> handleMaxSizeException(MaxUploadSizeExceededException exc) {
         ErrorCode errorCode = ErrorCode.PAYLOAD_TOO_LARGE;
