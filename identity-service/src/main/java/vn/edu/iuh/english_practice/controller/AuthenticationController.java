@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.edu.iuh.english_practice.dto.request.AuthenticationRequest;
 import vn.edu.iuh.english_practice.dto.request.GoogleIdTokenRequest;
+import vn.edu.iuh.english_practice.dto.request.GoogleAuthorizationCodeRequest;
 import vn.edu.iuh.english_practice.dto.request.IntropectTokenRequest;
 import vn.edu.iuh.english_practice.dto.request.LogoutRequest;
 import vn.edu.iuh.english_practice.dto.response.ApiResponse;
@@ -30,8 +31,10 @@ public class AuthenticationController {
     AuthenticationService authenticationService;
     InvalidatedTokenService invalidatedTokenService;
 
-    @PostMapping("/google/mobile")
-    public ApiResponse<AuthenticationResponse> authenticateGoogleMobile(
+    // FIX: Web, Android và iOS cùng gửi Google ID token vào một endpoint.
+    // Giữ /google/mobile để không làm hỏng phiên bản ứng dụng cũ.
+    @PostMapping({"/google", "/google/mobile"})
+    public ApiResponse<AuthenticationResponse> authenticateGoogle(
             @Valid @RequestBody GoogleIdTokenRequest request) {
         AuthenticationResponse authenticationResponse =
                 authenticationService.authenticateWithGoogleIdToken(request.getIdToken());
@@ -46,9 +49,9 @@ public class AuthenticationController {
 
     @PostMapping("/outbound/authentication")
     ApiResponse<AuthenticationResponse> outboundAuthenticate(
-            @RequestParam("code") String code
+            @Valid @RequestBody GoogleAuthorizationCodeRequest request
     ){
-        AuthenticationResponse authenticationResponse = authenticationService.outboundAuthenticate(code);
+        AuthenticationResponse authenticationResponse = authenticationService.outboundAuthenticate(request);
 
         return ApiResponse.<AuthenticationResponse>builder()
                 .message(authenticationResponse.isSuccess() == true ? "authenticated":"unauthenticated")

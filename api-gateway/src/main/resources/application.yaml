@@ -33,7 +33,8 @@ spring:
               "[/**]":
                 allowedOrigins:
                   - "http://localhost:5173"
-                  - "http://localhost:8888"
+                  - "http://localhost:8081"
+                  - "http://localhost:3000" #test do trung port voi font end
                 allowedMethods:
                   - GET
                   - POST

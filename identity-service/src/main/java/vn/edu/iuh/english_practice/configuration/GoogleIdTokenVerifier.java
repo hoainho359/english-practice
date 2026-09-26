@@ -24,7 +24,8 @@ public class GoogleIdTokenVerifier {
     private final JwtDecoder jwtDecoder;
 
     public GoogleIdTokenVerifier(
-            @Value("${outbound.identity.clientId}") String googleWebClientId) {
+            // ID Token tu Web va native deu co audience la Web Client ID (serverClientId).
+            @Value("${google.id-token.audience}") String googleIdTokenAudience) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder
                 .withJwkSetUri(GOOGLE_JWK_SET_URI)
                 .build();
@@ -44,9 +45,9 @@ public class GoogleIdTokenVerifier {
 
         OAuth2TokenValidator<Jwt> audienceValidator = token -> {
             List<String> audiences = token.getAudience();
-            if (googleWebClientId != null
-                    && !googleWebClientId.isBlank()
-                    && audiences.contains(googleWebClientId)) {
+            if (googleIdTokenAudience != null
+                    && !googleIdTokenAudience.isBlank()
+                    && audiences.contains(googleIdTokenAudience)) {
                 return OAuth2TokenValidatorResult.success();
             }
 

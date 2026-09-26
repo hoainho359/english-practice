@@ -18,4 +18,5 @@ public class ExchangeTokenRequest {
     String client_secret;
     String redirect_uri;
     String grant_type;
+    String code_verifier;
 }
