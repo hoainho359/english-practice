@@ -20,6 +20,10 @@ public enum ErrorCode {
     // file
     PAYLOAD_TOO_LARGE(2000, "Payload must be smaller than 50 MB", HttpStatus.PAYLOAD_TOO_LARGE),
 
+    // exam
+    EXAM_PART_NOT_FOUND(2100, "Exam part not found", HttpStatus.NOT_FOUND),
+    INVALID_EXAM_PART(2101, "Part number must be between 1 and 7", HttpStatus.BAD_REQUEST),
+
     // AI tutor
     INVALID_AI_IMAGE(3001, "Image must be JPEG, PNG, or WebP and smaller than 10 MB", HttpStatus.BAD_REQUEST);
 

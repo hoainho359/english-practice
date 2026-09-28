@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 
 import org.example.supperapp.examservice.dto.request.ListeningSubmissionRequest;
 import org.example.supperapp.examservice.dto.response.ApiResponse;
+import org.example.supperapp.examservice.dto.response.ExamPartResponse;
 import org.example.supperapp.examservice.dto.response.ListeningResultResponse;
 import org.example.supperapp.examservice.service.ExamService;
 import org.example.supperapp.examservice.service.ListeningGradingService;
@@ -37,6 +38,15 @@ public class ExamController {
         log.info("toeic year:{}", toeicYear);
         int year = Integer.parseInt(StringUtils.split(toeicYear, "-")[1]);
         return ApiResponse.builder().result(examService.getListTestOfYear(year)).build();
+    }
+
+    @GetMapping("/{year}/{testNumber}/parts/{partNumber}")
+    public ApiResponse<ExamPartResponse> getPart(
+            @PathVariable int year, @PathVariable int testNumber, @PathVariable int partNumber) {
+        return ApiResponse.<ExamPartResponse>builder()
+                .message("Exam part loaded")
+                .result(examService.getPart(year, testNumber, partNumber))
+                .build();
     }
 
     @PostMapping("/{year}/{testNumber}/listening/submit")
