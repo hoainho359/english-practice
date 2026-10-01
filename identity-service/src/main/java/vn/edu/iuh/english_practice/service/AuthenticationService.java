@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import vn.edu.iuh.english_practice.dto.request.AuthenticationRequest;
 import vn.edu.iuh.english_practice.dto.request.ExchangeTokenRequest;
+import vn.edu.iuh.english_practice.dto.request.GoogleAuthorizationCodeRequest;
 import vn.edu.iuh.english_practice.dto.request.IntropectTokenRequest;
 import vn.edu.iuh.english_practice.dto.response.ApiResponse;
 import vn.edu.iuh.english_practice.dto.response.AuthenticationResponse;
@@ -67,21 +68,28 @@ public class AuthenticationService {
     @Value("${outbound.identity.clientSecret}")
     @NonFinal
     String clientSecret;
+    @Value("${outbound.identity.androidClientId:}")
+    @NonFinal
+    String androidClientId;
+    @Value("${outbound.identity.iosClientId:}")
+    @NonFinal
+    String iosClientId;
 
 
-    public AuthenticationResponse outboundAuthenticate(String code){
+    public AuthenticationResponse outboundAuthenticate(GoogleAuthorizationCodeRequest request){
         //đây exchange sang gg dùng feign client
       try {
+          String oauthClientId = resolveGoogleClientId(request.getPlatform());
           ExchangeTokenRequest exchangeTokenRequest = ExchangeTokenRequest.builder()
-                  .redirect_uri("http://localhost:5173/authenticate")
-                  .client_id(clientId)
+                  .redirect_uri(request.getRedirectUri())
+                  .client_id(oauthClientId)
                   .grant_type("authorization_code")
-                  .code(code)
-                  .client_secret(clientSecret)
+                  .code(request.getCode())
+                  .code_verifier(request.getCodeVerifier())
+                  // Native OAuth clients are public clients and do not have a safe client secret.
+                  .client_secret("WEB".equals(request.getPlatform()) ? clientSecret : null)
                   .build();
-          log.info("outbound rq: {}", exchangeTokenRequest.toString());
           ExchangeTokenResponse exchangeTokenResponse = outboundIdentityClient.exchangeToken(exchangeTokenRequest);
-          log.info("outbound rq: {}", exchangeTokenResponse.toString());
           //sau khi user continue gg onboad vao db
           OutboundUserInfoResponse json = outboundUserClient.getUserInfo("json", exchangeTokenResponse.getAccessToken());
 
@@ -92,6 +100,20 @@ public class AuthenticationService {
           log.error("Google response body: {}", e.contentUTF8());
           throw e;
       }
+    }
+
+    private String resolveGoogleClientId(String platform) {
+        String resolved = switch (platform) {
+            case "WEB" -> clientId;
+            case "ANDROID" -> androidClientId;
+            case "IOS" -> iosClientId;
+            default -> throw new AppException(ErrorCode.INVALID_REQUEST);
+        };
+
+        if (resolved == null || resolved.isBlank()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        return resolved;
     }
 
     public AuthenticationResponse authenticateWithGoogleIdToken(String idToken) {

@@ -12,7 +12,8 @@ public enum ErrorCode {
     UNAUTHORIZED(1007, "You do not have permission"),
     UNAUTHENTICATED(1006, "Unauthenticated"),
     NOT_FOUND(1000, "Router not found"),
-    WRONG_ACCOUNT(1001, "wrong username or password error")
+    WRONG_ACCOUNT(1001, "wrong username or password error"),
+    INVALID_REQUEST(1002, "Invalid request")
     ;
     private String message;
     private int code;

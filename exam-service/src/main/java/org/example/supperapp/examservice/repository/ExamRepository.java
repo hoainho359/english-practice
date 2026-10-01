@@ -1,6 +1,7 @@
 package org.example.supperapp.examservice.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.example.supperapp.examservice.entity.ExamEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,4 +16,6 @@ public interface ExamRepository extends JpaRepository<ExamEntity, Long> {
     List<Integer> getListTestOfYear(@Param("year") int year);
 
     List<ExamEntity> findAllByYearAndTestNumberOrderByPartNumber(int year, int testNumber);
+
+    Optional<ExamEntity> findByYearAndTestNumberAndPartNumber(int year, int testNumber, int partNumber);
 }

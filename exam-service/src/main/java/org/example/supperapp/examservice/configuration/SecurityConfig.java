@@ -30,8 +30,6 @@ public class SecurityConfig {
         try {
             return httpSecurity
                     .csrf(AbstractHttpConfigurer::disable)
-                    .cors(httpSecurityCorsConfigurer ->
-                            httpSecurityCorsConfigurer.configurationSource(corsConfigurationSource()))
                     .authorizeHttpRequests(
                             authorizationManagerRequestMatcherRegistry -> authorizationManagerRequestMatcherRegistry
                                     .requestMatchers(HttpMethod.GET, PUBLIC_ENTRY_POINT)
@@ -62,26 +60,6 @@ public class SecurityConfig {
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwtGrantedAuthoritiesConverter);
 
         return jwtAuthenticationConverter;
-    }
-
-    @Bean
-    CorsConfigurationSource corsConfigurationSource() {
-
-        CorsConfiguration config = new CorsConfiguration();
-
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
-
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-
-        config.setAllowedHeaders(List.of("*"));
-
-        config.setAllowCredentials(true);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-
-        source.registerCorsConfiguration("/**", config);
-
-        return source;
     }
 
     @Bean
