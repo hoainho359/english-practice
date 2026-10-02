@@ -1,9 +1,15 @@
 package org.example.supperapp.examservice.dto.response;
 
+import java.time.Instant;
 import java.util.List;
 
-/** Structured result used by Expo to render the five TOEIC explanation sections. */
+/** Du lieu co cau truc de Expo hien thi nam phan giai thich TOEIC. */
 public record QuestionImageExplanationResponse(
+        String conversationId,
+        String requestId,
+        String messageId,
+        String responseType,
+        Instant createdAt,
         RecognizedQuestion question,
         CorrectAnswer correctAnswer,
         Translation translation,

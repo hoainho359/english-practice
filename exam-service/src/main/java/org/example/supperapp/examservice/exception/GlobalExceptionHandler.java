@@ -1,11 +1,12 @@
 package org.example.supperapp.examservice.exception;
 
-import java.util.Map;
-
 import org.example.supperapp.examservice.dto.response.ApiResponse;
+import org.springframework.ai.retry.NonTransientAiException;
+import org.springframework.ai.retry.TransientAiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -16,8 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    private static final String MIN_ATTRIBUTE = "min";
-
     @ExceptionHandler(value = Exception.class)
     ResponseEntity<ApiResponse> handlingRuntimeException(Exception exception) {
         log.error("Exception: ", exception);
@@ -26,7 +25,8 @@ public class GlobalExceptionHandler {
         apiResponse.setCode(ErrorCode.UNCATEGORIZED_EXCEPTION.getCode());
         apiResponse.setMessage(ErrorCode.UNCATEGORIZED_EXCEPTION.getMessage());
 
-        return ResponseEntity.badRequest().body(apiResponse);
+        return ResponseEntity.status(ErrorCode.UNCATEGORIZED_EXCEPTION.getStatusCode())
+                .body(apiResponse);
     }
 
     @ExceptionHandler(value = AppException.class)
@@ -78,40 +78,41 @@ public class GlobalExceptionHandler {
                         .message(errorCode.getMessage())
                         .build());
     }
-    //    @ExceptionHandler(value = MethodArgumentNotValidException.class)
-    //    ResponseEntity<ApiResponse> handlingValidation(MethodArgumentNotValidException exception) {
-    //        String enumKey = exception.getFieldError().getDefaultMessage();
-    //
-    //        ErrorCode errorCode = ErrorCode.INVALID_KEY;
-    //        Map<String, Object> attributes = null;
-    //        try {
-    //            errorCode = ErrorCode.valueOf(enumKey);
-    //
-    //            var constraintViolation =
-    //                    exception.getBindingResult().getAllErrors().getFirst().unwrap(ConstraintViolation.class);
-    //
-    //            attributes = constraintViolation.getConstraintDescriptor().getAttributes();
-    //
-    //            log.info(attributes.toString());
-    //
-    //        } catch (IllegalArgumentException e) {
-    //
-    //        }
-    //
-    //        ApiResponse apiResponse = new ApiResponse();
-    //
-    //        apiResponse.setCode(errorCode.getCode());
-    //        apiResponse.setMessage(
-    //                Objects.nonNull(attributes)
-    //                        ? mapAttribute(errorCode.getMessage(), attributes)
-    //                        : errorCode.getMessage());
-    //
-    //        return ResponseEntity.badRequest().body(apiResponse);
-    //    }
 
-    private String mapAttribute(String message, Map<String, Object> attributes) {
-        String minValue = String.valueOf(attributes.get(MIN_ATTRIBUTE));
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    ResponseEntity<ApiResponse> handlingValidation(MethodArgumentNotValidException exception) {
+        String message = exception.getBindingResult().getFieldErrors().stream()
+                .findFirst()
+                .map(error -> error.getDefaultMessage())
+                .orElse(ErrorCode.INVALID_REQUEST.getMessage());
 
-        return message.replace("{" + MIN_ATTRIBUTE + "}", minValue);
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.builder()
+                        .code(ErrorCode.INVALID_REQUEST.getCode())
+                        .message(message)
+                        .build());
+    }
+
+    @ExceptionHandler(TransientAiException.class)
+    ResponseEntity<ApiResponse> handlingTransientAiException(TransientAiException exception) {
+        log.warn("AI provider is temporarily unavailable: {}", exception.getMessage());
+        if (exception.getMessage() != null && exception.getMessage().contains("429")) {
+            return aiError(ErrorCode.AI_RATE_LIMITED);
+        }
+        return aiError(ErrorCode.AI_SERVICE_UNAVAILABLE);
+    }
+
+    @ExceptionHandler(NonTransientAiException.class)
+    ResponseEntity<ApiResponse> handlingNonTransientAiException(NonTransientAiException exception) {
+        log.error("AI provider rejected the request", exception);
+        return aiError(ErrorCode.AI_PROVIDER_ERROR);
+    }
+
+    private ResponseEntity<ApiResponse> aiError(ErrorCode errorCode) {
+        return ResponseEntity.status(errorCode.getStatusCode())
+                .body(ApiResponse.builder()
+                        .code(errorCode.getCode())
+                        .message(errorCode.getMessage())
+                        .build());
     }
 }

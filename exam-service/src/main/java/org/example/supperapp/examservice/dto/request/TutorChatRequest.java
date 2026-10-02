@@ -1,11 +1,10 @@
 package org.example.supperapp.examservice.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
-/**
- * A conversation id is optional on the first message. The server creates one and
- * returns it; Expo must send that id with every following message in the same chat.
- */
+/** Lan gui dau co the bo trong conversationId, cac lan sau dung id server tra ve. */
 public record TutorChatRequest(
         String conversationId,
+        @Size(max = 80, message = "clientMessageId must not exceed 80 characters") String clientMessageId,
         @NotBlank(message = "message must not be blank") String message) {}
