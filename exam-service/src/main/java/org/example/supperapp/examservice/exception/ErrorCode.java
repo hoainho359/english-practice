@@ -16,6 +16,7 @@ public enum ErrorCode {
     UNAUTHENTICATED(1006, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     UNAUTHORIZED(1007, "You do not have permission", HttpStatus.FORBIDDEN),
     INVALID_DOB(1008, "Your age must be at least {min}", HttpStatus.BAD_REQUEST),
+    INVALID_REQUEST(1009, "Invalid request", HttpStatus.BAD_REQUEST),
 
     // file
     PAYLOAD_TOO_LARGE(2000, "Payload must be smaller than 50 MB", HttpStatus.PAYLOAD_TOO_LARGE),
@@ -25,7 +26,13 @@ public enum ErrorCode {
     INVALID_EXAM_PART(2101, "Part number must be between 1 and 7", HttpStatus.BAD_REQUEST),
 
     // AI tutor
-    INVALID_AI_IMAGE(3001, "Image must be JPEG, PNG, or WebP and smaller than 10 MB", HttpStatus.BAD_REQUEST);
+    INVALID_AI_IMAGE(3001, "Image must be JPEG, PNG, or WebP and smaller than 10 MB", HttpStatus.BAD_REQUEST),
+    AI_SERVICE_UNAVAILABLE(3002, "AI service is temporarily unavailable", HttpStatus.SERVICE_UNAVAILABLE),
+    AI_PROVIDER_ERROR(3003, "AI provider rejected the request", HttpStatus.BAD_GATEWAY),
+    INVALID_AI_RESPONSE(3004, "AI returned an invalid response", HttpStatus.BAD_GATEWAY),
+    AI_RATE_LIMITED(3005, "AI request limit reached. Please try again later", HttpStatus.TOO_MANY_REQUESTS),
+    AI_CONVERSATION_NOT_FOUND(3006, "AI conversation not found", HttpStatus.NOT_FOUND),
+    INVALID_AI_CONVERSATION_ID(3007, "Invalid AI conversation id", HttpStatus.BAD_REQUEST);
 
     ErrorCode(int code, String message, HttpStatusCode statusCode) {
         this.code = code;

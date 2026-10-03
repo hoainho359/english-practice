@@ -1,13 +1,18 @@
 package org.example.supperapp.examservice.dto.response;
 
+import java.time.Instant;
 import java.util.List;
 
-/** Structured conversational response using Record java17*/
+/** Du lieu chat co cau truc de Expo render on dinh. */
 public record TutorChatResponse(
         String conversationId,
+        String requestId,
+        String messageId,
+        String responseType,
         LanguageAnalysis analysis,
         String reply,
-        List<String> followUpSuggestions) {
+        List<String> followUpSuggestions,
+        Instant createdAt) {
 
     public record LanguageAnalysis(
             String detectedLanguage,
@@ -16,16 +21,8 @@ public record TutorChatResponse(
             List<GrammarIssue> grammarIssues,
             List<VocabularyFeedback> vocabulary) {}
 
-    public record GrammarIssue(
-            String original,
-            String correction,
-            String grammarRule,
-            String explanation) {}
+    public record GrammarIssue(String original, String correction, String grammarRule, String explanation) {}
 
     public record VocabularyFeedback(
-            String wordOrPhrase,
-            String partOfSpeech,
-            String vietnameseMeaning,
-            String usageNote,
-            String example) {}
+            String wordOrPhrase, String partOfSpeech, String vietnameseMeaning, String usageNote, String example) {}
 }
